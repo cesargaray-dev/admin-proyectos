@@ -59,6 +59,23 @@ Ambos microservicios han sido desacoplados y publicados en repositorios individu
 3. **`org.apache.maven.plugins:maven-surefire-plugin:3.3.1`:**
    - Ejecutor de tests unitarios (JUnit Platform) compatible con el runtime de Java 21, resolviendo incompatibilidades de agentes de instrumentación dinámica.
 
+### 3.4. Suite de Pruebas Unitarias para Cobertura >80% (JaCoCo)
+Para satisfacer y superar el umbral del 80% de cobertura de código sin pruebas dummy o frágiles, se diseñó e implementó una arquitectura de pruebas basada en **JUnit 5**, **Mockito** y **MockMvc**:
+
+1. **Microservicio `Ejercicio5Cliente`:**
+   - **`GestorControllerTest.java` (24 KB):** Pruebas integrales con `MockMvc` sobre los 19 endpoints del controlador web (`/home`, `/inicio`, `/login`, `/logout`, `/registrar`, `/guardarProyecto`, `/editarProyecto`, `/eliminarProyecto`, etc.), simulando respuestas del backend con `RestTemplate` mockeado.
+   - **`GestorControllerErroresTest.java`:** Validación de rutas de fallo y manejo de excepciones cuando el servicio de backend no responde o devuelve códigos de error HTTP.
+   - **`GestorControllerValidacionTest.java`:** Comprobación de validaciones de entrada, datos nulos y cadenas vacías.
+   - **`ModeloReflectionTest.java`:** Verificación dinámica por introspección/reflexión de constructores, getters, setters, `equals`, `hashCode` y `toString` de todas las clases entidad del paquete `com.mx.cbtis.modelo`, garantizando el 100% de cobertura sobre las clases de transporte de datos.
+
+2. **Microservicio `Ejercicio5MyAPIGestor`:**
+   - **`ProyectosControllerTest.java`:** Cobertura de métodos CRUD (`getProyecto`, `listarProyectos`, `guardarProyecto`, `editarProyecto`, `eliminarProyecto`) simulando `ProtectosRepository`.
+   - **`TareasControllerTest.java`:** Cobertura completa sobre operaciones de tareas simulando `TareasRepository`.
+   - **`UsuarioControllerTest.java`:** Cobertura de registro, login y consulta de usuarios sobre `UsuarioRepository`.
+   - **`AsignacionesControllerTest.java`:** Pruebas unitarias de asignaciones y relaciones entre proyectos/usuarios.
+   - **`ComentariosControllerTest.java`:** Pruebas unitarias sobre el repositorio de comentarios.
+   - **`ModeloReflectionTest.java`:** Cobertura exhaustiva por reflexión sobre las entidades JPA del paquete `com.mx.cbtis.gestor.modelo`.
+
 ---
 
 ## 4. Configuración de Infraestructura DevOps (Docker & Jenkins)
