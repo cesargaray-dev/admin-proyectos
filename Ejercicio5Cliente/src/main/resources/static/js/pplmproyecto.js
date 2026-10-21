@@ -1,22 +1,24 @@
 document.addEventListener("DOMContentLoaded", function() {
-            var formRegistro = document.getElementById('form-registro');
+    var formRegistro = document.getElementById('form-registro');
+    if (formRegistro) {
+        formRegistro.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevenir el envío del formulario para validar primero
 
-            formRegistro.addEventListener('submit', function(event) {
-                event.preventDefault(); // Prevenir el envío del formulario para validar primero
+            var nombre = document.getElementById('nombre') ? document.getElementById('nombre').value : '';
+            var email = document.getElementById('email') ? document.getElementById('email').value : '';
+            var password = document.getElementById('password') ? document.getElementById('password').value : '';
+            var mensajeError = document.getElementById('mensaje-error');
 
-                var nombre = document.getElementById('nombre').value;
-                var email = document.getElementById('email').value;
-                var password = document.getElementById('password').value;
-                var mensajeError = document.getElementById('mensaje-error');
-
-                // Verificar si algún campo está vacío
-                if (!nombre || !email || !password) {
+            // Verificar si algún campo está vacío
+            if (!nombre || !email || !password) {
+                if (mensajeError) {
                     mensajeError.innerText = "Por favor complete todos los campos.";
-                    return;
                 }
+                return;
+            }
 
-                // Si todos los campos están llenos, el formulario se envía
-                // Aquí podrías agregar más validaciones si es necesario
-                formRegistro.submit();
-            });
-            });
+            // Si todos los campos están llenos, el formulario se envía
+            formRegistro.submit();
+        });
+    }
+});

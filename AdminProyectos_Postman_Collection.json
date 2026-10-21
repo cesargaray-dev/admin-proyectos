@@ -1,0 +1,858 @@
+{
+  "info": {
+    "_postman_id": "8f3b2319-a3bf-4d10-85f2-5a3d02b1239c",
+    "name": "Admin Proyectos API - Neon PostgreSQL",
+    "description": "Colección completa para pruebas de todos los endpoints de la API Gestor de Proyectos (Spring Boot 2.7 + Neon PostgreSQL). Incluye Usuarios, Proyectos, Tareas, Comentarios y Asignaciones.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Usuarios",
+      "description": "Endpoints para gestión y autenticación de usuarios.",
+      "item": [
+        {
+          "name": "Listar todos los usuarios",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buscarUsuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarUsuarios"
+              ]
+            },
+            "description": "Retorna la lista de todos los usuarios registrados en Neon PostgreSQL."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar usuario por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buscarUsuario?id=131",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarUsuario"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "131"
+                }
+              ]
+            },
+            "description": "Busca un usuario por su identificador único (query param 'id')."
+          },
+          "response": []
+        },
+        {
+          "name": "Login de usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo_electronico\": \"ana22533@cbtis75.edu.mx\",\n  \"contrasena\": \"0722\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/getUsuarioLogin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "getUsuarioLogin"
+              ]
+            },
+            "description": "Valida credenciales. Si coincide retorna los datos del usuario; si no, retorna el nombre con '000'."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear nuevo usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Carlos Mendoza Sanchez\",\n  \"correo_electronico\": \"carlos22500@cbtis75.edu.mx\",\n  \"contrasena\": \"carlos123\",\n  \"rol\": \"Docente\",\n  \"imagen_usuario\": \"#3498DB\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addUsuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "addUsuario"
+              ]
+            },
+            "description": "Registra un nuevo usuario en la base de datos (retorna 1 en caso de éxito)."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_usuario\": 131,\n  \"nombre\": \"Ana Paola Ramirez Vazquez\",\n  \"correo_electronico\": \"ana22533@cbtis75.edu.mx\",\n  \"contrasena\": \"0722\",\n  \"rol\": \"Estudiante\",\n  \"imagen_usuario\": \"#70FAB7\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/updateUsuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "updateUsuario"
+              ]
+            },
+            "description": "Actualiza la información de un usuario existente."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_usuario\": 131\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/deleteUsuario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deleteUsuario"
+              ]
+            },
+            "description": "Elimina un usuario de la base de datos."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Proyectos",
+      "description": "Endpoints para gestionar proyectos.",
+      "item": [
+        {
+          "name": "Listar todos los proyectos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buscarProyectos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarProyectos"
+              ]
+            },
+            "description": "Retorna todos los proyectos registrados."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar proyecto por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buscarProyecto?id_proyecto=197",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarProyecto"
+              ],
+              "query": [
+                {
+                  "key": "id_proyecto",
+                  "value": "197"
+                }
+              ]
+            },
+            "description": "Busca un proyecto por el parámetro 'id_proyecto'."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear nuevo proyecto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Sistema de Gestion Escolar\",\n  \"descripcion\": \"Plataforma web para administracion y control escolar\",\n  \"fecha_inicio\": \"2024-10-01\",\n  \"fecha_finalizacion\": \"2024-12-15\",\n  \"estado_proyecto\": \"En proceso\",\n  \"fondo\": \"/Images/fondo2.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addProyecto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "addProyecto"
+              ]
+            },
+            "description": "Crea un nuevo proyecto en la base de datos (retorna 1 si es exitoso)."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar proyecto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_proyecto\": 197,\n  \"nombre\": \"My API Rest Actualizada\",\n  \"descripcion\": \"Desarrollaran un Api Rest con Spring Boot y Neon PostgreSQL\",\n  \"fecha_inicio\": \"2024-05-31\",\n  \"fecha_finalizacion\": \"2024-06-29\",\n  \"estado_proyecto\": \"Finalizado\",\n  \"fondo\": \"/Images/animacion1.gif\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/updateProyecto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "updateProyecto"
+              ]
+            },
+            "description": "Actualiza la información de un proyecto existente."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar proyecto",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_proyecto\": 197\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/deleteProyecto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deleteProyecto"
+              ]
+            },
+            "description": "Elimina un proyecto dado su id_proyecto."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Tareas",
+      "description": "Endpoints para gestionar tareas dentro de los proyectos.",
+      "item": [
+        {
+          "name": "Listar todas las tareas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buscarTareas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarTareas"
+              ]
+            },
+            "description": "Obtiene todas las tareas existentes en la base de datos."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar tarea por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buscarTarea?id_tarea=199",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarTarea"
+              ],
+              "query": [
+                {
+                  "key": "id_tarea",
+                  "value": "199"
+                }
+              ]
+            },
+            "description": "Busca una tarea por su parámetro 'id_tarea'."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener tareas por Proyecto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_proyecto\": 197\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/getTarea",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "getTarea"
+              ]
+            },
+            "description": "Filtra y devuelve las tareas asignadas a un proyecto en particular."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear nueva tarea",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Disenar interfaz grafica\",\n  \"descripcion\": \"Crear vistas responsivas con HTML y CSS\",\n  \"fecha_vencimiento\": \"2024-11-20\",\n  \"estado\": \"warning\",\n  \"lista\": \"en progreso\",\n  \"id_proyecto\": 197\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addTareas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "addTareas"
+              ]
+            },
+            "description": "Crea una nueva tarea asignada a un proyecto (retorna 1 si es exitoso)."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar tarea",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_tarea\": 199,\n  \"nombre\": \"Base de datos Neon\",\n  \"descripcion\": \"Estructura de tablas y conexion a Postgres\",\n  \"fecha_vencimiento\": \"2024-06-30\",\n  \"estado\": \"success\",\n  \"lista\": \"terminado\",\n  \"id_proyecto\": 197\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/updateTareas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "updateTareas"
+              ]
+            },
+            "description": "Actualiza la información de una tarea existente."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar tarea",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_tarea\": 199\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/deleteTareas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deleteTareas"
+              ]
+            },
+            "description": "Elimina una tarea existente."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Comentarios",
+      "description": "Endpoints para gestionar comentarios en las tareas.",
+      "item": [
+        {
+          "name": "Listar todos los comentarios",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buscarComentarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarComentarios"
+              ]
+            },
+            "description": "Retorna la lista de todos los comentarios registrados."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar comentario por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buscarComentario?id=201",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarComentario"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "201"
+                }
+              ]
+            },
+            "description": "Busca un comentario por el parámetro 'id'."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener comentarios por Tarea",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_tarea\": 199\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/getComentario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "getComentario"
+              ]
+            },
+            "description": "Obtiene la lista de comentarios asociados a una tarea específica."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear nuevo comentario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"texto_comentario\": \"Revisando avances del sprint\",\n  \"fecha_hora\": \"2024-10-13 10:00:00\",\n  \"id_usuario\": \"Ana Paola Ramirez Vazquez\",\n  \"id_tarea\": 199\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addComentario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "addComentario"
+              ]
+            },
+            "description": "Inserta un nuevo comentario asociado a una tarea."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar comentario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_comentario\": 201,\n  \"texto_comentario\": \"Subirlo YA modificado\",\n  \"fecha_hora\": \"2024-06-26 14:00:00\",\n  \"id_usuario\": \"Perla Joceline Martinez Meza\",\n  \"id_tarea\": 199\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/updateComentario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "updateComentario"
+              ]
+            },
+            "description": "Actualiza el contenido de un comentario existente."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar comentario",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_comentario\": 250\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/deleteComentario",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deleteComentario"
+              ]
+            },
+            "description": "Elimina un comentario por su id."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Asignaciones",
+      "description": "Endpoints para gestionar asignaciones de tareas a usuarios.",
+      "item": [
+        {
+          "name": "Listar todas las asignaciones",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/buscarAsignaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarAsignaciones"
+              ]
+            },
+            "description": "Retorna la lista de todas las asignaciones de tareas a usuarios."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar asignación por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buscarAsignacion?id=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "buscarAsignacion"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Obtiene los detalles de una asignación específica por su ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear nueva asignación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_usuario\": 131,\n  \"id_tarea\": 199,\n  \"fecha_asignacion\": \"2024-10-13\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addAsignacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "addAsignacion"
+              ]
+            },
+            "description": "Asigna una tarea a un usuario registrado."
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar asignación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_asignacion\": 1,\n  \"id_usuario\": 172,\n  \"id_tarea\": 199,\n  \"fecha_asignacion\": \"2024-10-14\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/updateAsignacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "updateAsignacion"
+              ]
+            },
+            "description": "Actualiza la asignación de una tarea a otro usuario o con otra fecha."
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar asignación",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_asignacion\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/deleteAsignacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "deleteAsignacion"
+              ]
+            },
+            "description": "Elimina una asignación por su id."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
