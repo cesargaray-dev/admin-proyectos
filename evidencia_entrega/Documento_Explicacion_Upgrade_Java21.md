@@ -513,7 +513,9 @@ pipeline {
         stage('Build & Test (Java 21)') {
             steps {
                 echo '=== Compilando con Java 21 y ejecutando pruebas unitarias ==='
-                sh 'mvn clean verify -Djacoco.haltOnFailure=false'
+                sh '''
+                    "$MAVEN_HOME/bin/mvn" clean package -Dsurefire.useFile=false
+                '''
             }
         }
 
@@ -523,7 +525,8 @@ pipeline {
                 jacoco(
                     execPattern: 'target/jacoco.exec',
                     classPattern: 'target/classes',
-                    sourcePattern: 'src/main/java'
+                    sourcePattern: 'src/main/java',
+                    minimumInstructionCoverage: '80'
                 )
             }
         }
@@ -531,7 +534,15 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 echo '=== Ejecutando análisis estático con SonarQube ==='
-                sh 'mvn sonar:sonar -Dsonar.host.url=http://sonarqube:9000 || true'
+                withSonarQubeEnv('SonnarServer') {
+                    sh '''
+                        "$MAVEN_HOME/bin/mvn" \
+                        org.sonarsource.scanner.maven:sonar-maven-plugin:5.5.0.6356:sonar \
+                        -Dsonar.host.url="${SONAR_HOST_URL}" \
+                        -Dsonar.login="${SONAR_AUTH_TOKEN}" \
+                        -Dsonar.projectKey=Ejercicio5Cliente
+                    '''
+                }
             }
         }
     }
@@ -541,7 +552,10 @@ pipeline {
             echo '=== Fin del Pipeline de Ejercicio5Cliente ==='
         }
         success {
-            echo '=== Pipeline finalizado con éxito (Java 21 homologado) ==='
+            echo '=== Pipeline finalizado con éxito (Java 21 y SonarQube OK) ==='
+        }
+        failure {
+            echo '=== Fallas detectadas durante la ejecución ==='
         }
     }
 }
@@ -569,7 +583,9 @@ pipeline {
         stage('Build & Test (Java 21)') {
             steps {
                 echo '=== Compilando con Java 21 y ejecutando pruebas unitarias ==='
-                sh 'mvn clean verify -Djacoco.haltOnFailure=false'
+                sh '''
+                    "$MAVEN_HOME/bin/mvn" clean package -Dsurefire.useFile=false
+                '''
             }
         }
 
@@ -579,7 +595,8 @@ pipeline {
                 jacoco(
                     execPattern: 'target/jacoco.exec',
                     classPattern: 'target/classes',
-                    sourcePattern: 'src/main/java'
+                    sourcePattern: 'src/main/java',
+                    minimumInstructionCoverage: '80'
                 )
             }
         }
@@ -587,7 +604,15 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 echo '=== Ejecutando análisis estático con SonarQube ==='
-                sh 'mvn sonar:sonar -Dsonar.host.url=http://sonarqube:9000 || true'
+                withSonarQubeEnv('SonnarServer') {
+                    sh '''
+                        "$MAVEN_HOME/bin/mvn" \
+                        org.sonarsource.scanner.maven:sonar-maven-plugin:5.5.0.6356:sonar \
+                        -Dsonar.host.url="${SONAR_HOST_URL}" \
+                        -Dsonar.login="${SONAR_AUTH_TOKEN}" \
+                        -Dsonar.projectKey=Ejercicio5MyAPIGestor
+                    '''
+                }
             }
         }
     }
@@ -597,7 +622,10 @@ pipeline {
             echo '=== Fin del Pipeline de Ejercicio5MyAPIGestor ==='
         }
         success {
-            echo '=== Pipeline finalizado con éxito (Java 21 homologado) ==='
+            echo '=== Pipeline finalizado con éxito (Java 21 y SonarQube OK) ==='
+        }
+        failure {
+            echo '=== Fallas detectadas durante la ejecución ==='
         }
     }
 }
@@ -605,8 +633,19 @@ pipeline {
 
 ---
 
-## 8. Conclusiones
+## 8. Resultados de Cobertura y Métricas en SonarQube
 
-1. **Homologación Exitosa:** Ambos microservicios compilan y corren pruebas sin advertencias de compatibilidad bajo la JVM 21 LTS y Maven 3.9.9.
-2. **Ciclo de Integración Continua Operativo:** Jenkins descarga el código directamente desde GitHub, compila de forma reproducible con las herramientas configuradas y alimenta tanto las métricas de JaCoCo como la plataforma de SonarQube Server.
-3. **Requisito para la Siguiente Sesión:** La arquitectura de repositorios independientes y tuberías declarativas deja el proyecto preparado para la siguiente práctica técnica de desarrollo de pruebas y aseguramiento de calidad.
+Ambos proyectos fueron analizados exitosamente por SonarQube mediante Jenkins, cumpliendo y superando ampliamente el umbral del **80% de cobertura** establecido:
+
+| Proyecto | Pruebas Unitarias Ejecutadas | Cobertura en SonarQube | Cobertura de Líneas | Cobertura de Ramas (Branches) | Bugs | Vulnerabilidades | Estado Quality Gate |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`Ejercicio5Cliente`** | **53 / 53 (100% OK)** | **95.2%** | **97.0%** | **66.7%** | **0** | **0** | **PASSED (Aprobado)** |
+| **`Ejercicio5MyAPIGestor`** | **43 / 43 (100% OK)** | **99.4%** | **99.3%** | **100.0%** | **0** | **0** | **PASSED (Aprobado)** |
+
+---
+
+## 9. Conclusiones
+
+1. **Homologación Exitosa:** Ambos microservicios compilan y corren pruebas sin advertencias de compatibilidad bajo la JVM 21 LTS y Maven 3.9.9, con compatibilidad Spring Boot 3.3.5 y migración a `jakarta.persistence.*`.
+2. **Ciclo CI/CD Completo con SonarQube:** Jenkins clona el código de GitHub (`Cesax69`), compila de forma reproducible con las herramientas configuradas (`JDK21` y `Maven21`), ejecuta las pruebas unitarias, genera los reportes binarios y XML de JaCoCo, y publica el análisis estático a SonarQube Server (`SonnarServer`) mediante el plugin `sonar-maven-plugin:5.5.0.6356`.
+3. **Cumplimiento Sobresaliente de Cobertura (>80%):** Ambos proyectos superan ampliamente la meta del 80%, alcanzando **95.2%** (`Ejercicio5Cliente`) y **99.4%** (`Ejercicio5MyAPIGestor`), con 0 vulnerabilidades y 0 bugs reportados en el panel oficial de SonarQube.
