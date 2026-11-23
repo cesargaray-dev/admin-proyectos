@@ -1,0 +1,106 @@
+# ==============================================================================
+# Integración local de contenedores – Admin Proyectos (Unidad III DevOps)
+#
+# Modos de ejecución:
+#   1. Offline / Integración local con PostgreSQL en contenedor:
+#        docker compose -f docker-compose.app.yml --profile local-db up -d --build
+#
+#   2. Conectado a Neon PostgreSQL Cloud (crear `.env` desde `infra/.env.example`):
+#        docker compose -f docker-compose.app.yml --env-file .env up -d --build
+#
+#   3. Stack integrado con Monitoreo (Prometheus + Grafana + Alertmanager + Loki):
+#        docker compose -p admin-proyectos -f docker-compose.app.yml --profile local-db up -d --build
+#        docker compose -p admin-proyectos -f monitoring/docker-compose.monitoring.yml up -d
+#      (Usar comandos separados con `-p admin-proyectos` para que los volúmenes
+#       relativos de `monitoring/` resuelvan correctamente y compartan `devops-net`.)
+#
+# Red compartida `devops-net`: expone `api-gestor:8081` y `cliente:8082` para
+# scraping directo de Prometheus y comunicación interna entre microservicios.
+# ==============================================================================
+
+services:
+  local-postgres:
+    image: postgres:16-alpine
+    container_name: admin-proyectos-postgres
+    profiles:
+      - local-db
+    ports:
+      - "${LOCAL_POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: "${LOCAL_DB_NAME:-neondb}"
+      POSTGRES_USER: "${LOCAL_DB_USER:-postgres}"
+      # Solo para base de datos efímera local de desarrollo/pruebas; sobrescribir en .env
+      POSTGRES_PASSWORD: "${LOCAL_DB_PASSWORD:-changeme_local_only}"
+    volumes:
+      - local_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LOCAL_DB_USER:-postgres} -d ${LOCAL_DB_NAME:-neondb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - devops-net
+
+  api-gestor:
+    build:
+      context: ./Ejercicio5MyAPIGestor
+      dockerfile: Dockerfile
+    image: admin-proyectos/api-gestor:local
+    container_name: api-gestor
+    ports:
+      - "${API_PORT:-8081}:8081"
+    environment:
+      PORT: "8081"
+      DB_URL: "${DB_URL:-jdbc:postgresql://local-postgres:5432/neondb}"
+      DB_USERNAME: "${DB_USERNAME:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD:-changeme_local_only}"
+      DB_POOL_MAX: "${DB_POOL_MAX:-5}"
+      JPA_DDL_AUTO: "${JPA_DDL_AUTO:-update}"
+      JPA_SHOW_SQL: "${JPA_SHOW_SQL:-false}"
+    depends_on:
+      local-postgres:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'if command -v curl >/dev/null 2>&1; then curl -fsS http://localhost:8081/actuator/health; else wget -qO- http://localhost:8081/actuator/health; fi' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+    restart: unless-stopped
+    networks:
+      - devops-net
+
+  cliente:
+    build:
+      context: ./Ejercicio5Cliente
+      dockerfile: Dockerfile
+    image: admin-proyectos/cliente:local
+    container_name: cliente
+    ports:
+      - "${CLIENT_PORT:-8082}:8082"
+    environment:
+      PORT: "8082"
+      API_BASE_URL: "${API_BASE_URL:-http://api-gestor:8081}"
+    depends_on:
+      api-gestor:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'if command -v curl >/dev/null 2>&1; then curl -fsS http://localhost:8082/actuator/health; else wget -qO- http://localhost:8082/actuator/health; fi' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+    restart: unless-stopped
+    networks:
+      - devops-net
+
+volumes:
+  local_postgres_data:
+
+networks:
+  devops-net:
+    name: devops-net
+    driver: bridge

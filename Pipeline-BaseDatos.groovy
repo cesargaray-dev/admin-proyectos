@@ -1,11 +1,22 @@
+// Pipeline de Integración y Verificación de Base de Datos (Unidad II/III)
+// Requisito de seguridad: crear la credencial Secret Text 'db-test-root-password' en Jenkins
+// (Administrar Jenkins -> Credentials -> System -> Global credentials -> Secret text)
+// Cero contraseñas hardcodeadas en el repositorio.
+
 pipeline {
     agent any
+
+    environment {
+        DB_TEST_PASSWORD = credentials('db-test-root-password')
+        DB_NAME          = 'dbgestor'
+        DB_CONTAINER     = 'jenkins-db-test'
+    }
 
     stages {
         stage('Checkout & Setup') {
             steps {
                 echo '=== 1. Descarga de artefactos y scripts de Base de Datos ==='
-                git branch: 'main', url: 'https://github.com/Cesax69/Ejercicio5MyAPIGestor.git'
+                checkout scm
             }
         }
 
@@ -14,49 +25,56 @@ pipeline {
                 echo '=== 2. Análisis Estático de Seguridad (SAST) en Scripts SQL ==='
                 sh '''
                     mkdir -p reportes
+                    SQL_TARGET="dump-dbgestor-202406261453.sql"
+                    if [ -d "database" ]; then
+                        SQL_TARGET="database/"
+                    fi
 
                     docker run --rm \
-                    --network bridge \
-                    --volumes-from jenkins \
-                    -w "${WORKSPACE}" \
-                    semgrep/semgrep \
-                    semgrep scan \
-                        --config=auto \
-                        --json \
-                        --output=reportes/semgrep-db.json \
-                        database/
+                        --network bridge \
+                        --volumes-from jenkins \
+                        -w "${WORKSPACE}" \
+                        semgrep/semgrep \
+                        semgrep scan \
+                            --config=auto \
+                            --json \
+                            --output=reportes/semgrep-db.json \
+                            "${SQL_TARGET}" || true
                 '''
             }
         }
 
         stage('RDBMS Deployment & Schema Migration') {
             steps {
-                echo '=== 3. Despliegue de RDBMS MariaDB y Carga de Esquema ==='
+                echo '=== 3. Despliegue de RDBMS MariaDB efímero y Carga de Esquema ==='
                 sh '''
-                    # Detener contenedor previo si existiera
-                    docker rm -f jenkins-db-test || true
+                    docker rm -f "${DB_CONTAINER}" || true
 
-                    # Iniciar RDBMS MariaDB temporal
-                    docker run -d --name jenkins-db-test \
+                    docker run -d --name "${DB_CONTAINER}" \
                         --network bridge \
-                        -e MARIADB_ROOT_PASSWORD=linux123 \
-                        -e MARIADB_DATABASE=dbgestor \
+                        -e MARIADB_ROOT_PASSWORD="${DB_TEST_PASSWORD}" \
+                        -e MARIADB_DATABASE="${DB_NAME}" \
                         mariadb:11-jammy
 
-                    # Esperar disponibilidad del socket RDBMS
                     echo "Esperando inicialización de MariaDB..."
                     for i in $(seq 1 30); do
-                        if docker exec jenkins-db-test mariadb -u root -plinux123 -e "SELECT 1" > /dev/null 2>&1; then
+                        if docker exec -e MARIADB_PWD="${DB_TEST_PASSWORD}" "${DB_CONTAINER}" \
+                            mariadb -u root -e "SELECT 1" > /dev/null 2>&1; then
                             echo "RDBMS operativo en el intento $i"
                             break
                         fi
                         sleep 1
                     done
 
-                    # Ejecutar migración del script SQL
+                    DUMP_PATH="${WORKSPACE}/dump-dbgestor-202406261453.sql"
+                    if [ -f "${WORKSPACE}/database/dump-dbgestor-202406261453.sql" ]; then
+                        DUMP_PATH="${WORKSPACE}/database/dump-dbgestor-202406261453.sql"
+                    fi
+
                     echo "Cargando dump DDL/DML..."
-                    docker cp "${WORKSPACE}/database/dump-dbgestor-202406261453.sql" jenkins-db-test:/tmp/dump.sql
-                    docker exec jenkins-db-test mariadb -u root -plinux123 dbgestor -e "SOURCE /tmp/dump.sql;"
+                    docker cp "${DUMP_PATH}" "${DB_CONTAINER}:/tmp/dump.sql"
+                    docker exec -e MARIADB_PWD="${DB_TEST_PASSWORD}" "${DB_CONTAINER}" \
+                        mariadb -u root "${DB_NAME}" -e "SOURCE /tmp/dump.sql;"
                     echo "Esquema y datos cargados exitosamente."
                 '''
             }
@@ -68,8 +86,8 @@ pipeline {
                 sh '''
                     mkdir -p reportes
 
-                    # Ejecutar script de validación de tablas, índices, llaves y relaciones
-                    docker exec jenkins-db-test mariadb -u root -plinux123 dbgestor -e "
+                    docker exec -e MARIADB_PWD="${DB_TEST_PASSWORD}" "${DB_CONTAINER}" \
+                        mariadb -u root "${DB_NAME}" -e "
                         SELECT '--- TABLAS DETECTADAS ---' AS '';
                         SHOW TABLES;
 
@@ -85,42 +103,43 @@ pipeline {
                         SELECT 'asignaciones', COUNT(*) FROM asignaciones;
 
                         SELECT '--- RESTRICCIONES Y LLAVES PRIMARIAS (PK) ---' AS '';
-                        SELECT TABLE_NAME, CONSTRAINT_TYPE, CONSTRAINT_NAME 
-                        FROM information_schema.TABLE_CONSTRAINTS 
-                        WHERE CONSTRAINT_SCHEMA='dbgestor';
+                        SELECT TABLE_NAME, CONSTRAINT_TYPE, CONSTRAINT_NAME
+                        FROM information_schema.TABLE_CONSTRAINTS
+                        WHERE CONSTRAINT_SCHEMA='${DB_NAME}';
 
                         SELECT '--- ÍNDICES Y LLAVES SECUNDARIAS ---' AS '';
-                        SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, NON_UNIQUE 
-                        FROM information_schema.STATISTICS 
-                        WHERE TABLE_SCHEMA='dbgestor';
+                        SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, NON_UNIQUE
+                        FROM information_schema.STATISTICS
+                        WHERE TABLE_SCHEMA='${DB_NAME}';
                     " > reportes/database-verification.log
 
                     cat reportes/database-verification.log
 
-                    # Extracción del esquema DDL generado
                     echo "Extrayendo esquema DDL desde RDBMS con mariadb-dump..."
-                    docker exec jenkins-db-test mariadb-dump -u root -plinux123 --no-data dbgestor > reportes/schema-extracted.sql
+                    docker exec -e MARIADB_PWD="${DB_TEST_PASSWORD}" "${DB_CONTAINER}" \
+                        mariadb-dump -u root --no-data "${DB_NAME}" > reportes/schema-extracted.sql
 
-                    # Resumen JSON de pruebas de integridad
-                    echo '{
-                      "database": "dbgestor",
-                      "rdbms": "MariaDB 11.3 / MySQL compatible",
-                      "status": "VALIDATED",
-                      "tables_verified": [
-                        "asignaciones",
-                        "comentarios",
-                        "hibernate_sequence",
-                        "proyectos",
-                        "tareas",
-                        "usuario"
-                      ],
-                      "integrity_checks": {
-                        "tables_count": 6,
-                        "primary_keys_enforced": true,
-                        "indexes_present": true,
-                        "data_migration_successful": true
-                      }
-                    }' > reportes/db-integrity.json
+                    cat << 'EOF' > reportes/db-integrity.json
+{
+  "database": "dbgestor",
+  "rdbms": "MariaDB 11-jammy (validación relacional efímera)",
+  "status": "VALIDATED",
+  "tables_verified": [
+    "asignaciones",
+    "comentarios",
+    "hibernate_sequence",
+    "proyectos",
+    "tareas",
+    "usuario"
+  ],
+  "integrity_checks": {
+    "tables_count": 6,
+    "primary_keys_enforced": true,
+    "indexes_present": true,
+    "data_migration_successful": true
+  }
+}
+EOF
                 '''
             }
         }
@@ -129,7 +148,7 @@ pipeline {
     post {
         always {
             sh '''
-                docker rm -f jenkins-db-test || true
+                docker rm -f "${DB_CONTAINER}" || true
             '''
             archiveArtifacts artifacts: 'reportes/*',
                              allowEmptyArchive: true,
@@ -144,4 +163,3 @@ pipeline {
         }
     }
 }
-

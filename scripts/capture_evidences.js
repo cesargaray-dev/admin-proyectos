@@ -4,6 +4,14 @@ const path = require('path');
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const OUTPUT_DIR = path.join(__dirname, '..', 'evidencia_entrega');
+const JENKINS_USER = process.env.JENKINS_USER || 'garay';
+const JENKINS_PASSWORD = process.env.JENKINS_PASSWORD;
+const SONAR_USER = process.env.SONAR_USER || 'admin';
+const SONAR_PASSWORD = process.env.SONAR_PASSWORD;
+
+if (!JENKINS_PASSWORD || !SONAR_PASSWORD) {
+  throw new Error('Missing required environment variables: JENKINS_PASSWORD and SONAR_PASSWORD must be set.');
+}
 
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -27,7 +35,7 @@ async function wait(ms) {
 
     // 1. JENKINS
     console.log('Autenticando en Jenkins...');
-    await page.authenticate({ username: 'garay', password: 'linux123' });
+    await page.authenticate({ username: JENKINS_USER, password: JENKINS_PASSWORD });
 
     // Captura 1: Dashboard con los 3 Pipelines
     console.log('Capturando 01_jenkins_dashboard_3_pipelines...');
@@ -68,14 +76,14 @@ async function wait(ms) {
     // 2. SONARQUBE
     console.log('Autenticando en SonarQube...');
     const sonarPage = await browser.newPage();
-    await sonarPage.authenticate({ username: 'admin', password: 'linux123' });
+    await sonarPage.authenticate({ username: SONAR_USER, password: SONAR_PASSWORD });
 
     await sonarPage.goto('http://localhost:9000/sessions/new', { waitUntil: 'domcontentloaded' });
     await wait(2000);
     const loginInput = await sonarPage.$('input[name="login"]');
     if (loginInput) {
-      await sonarPage.type('input[name="login"]', 'admin');
-      await sonarPage.type('input[name="password"]', 'linux123');
+      await sonarPage.type('input[name="login"]', SONAR_USER);
+      await sonarPage.type('input[name="password"]', SONAR_PASSWORD);
       await sonarPage.click('button[type="submit"]');
       await wait(3000);
     }

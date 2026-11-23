@@ -4,6 +4,14 @@ const path = require('path');
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const OUTPUT_DIR = path.join(__dirname, '..', 'evidencia_entrega');
+const JENKINS_USER = process.env.JENKINS_USER || 'garay';
+const JENKINS_PASSWORD = process.env.JENKINS_PASSWORD;
+const SONAR_USER = process.env.SONAR_USER || 'admin';
+const SONAR_PASSWORD = process.env.SONAR_PASSWORD;
+
+if (!JENKINS_PASSWORD || !SONAR_PASSWORD) {
+  throw new Error('Missing required environment variables: JENKINS_PASSWORD and SONAR_PASSWORD must be set.');
+}
 
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -29,8 +37,8 @@ async function wait(ms) {
   // ==========================================
   console.log('Iniciando sesión en Jenkins...');
   await page.goto('http://localhost:8080/login');
-  await page.type('#j_username', 'garay');
-  await page.type('#j_password', 'linux123');
+  await page.type('#j_username', JENKINS_USER);
+  await page.type('#j_password', JENKINS_PASSWORD);
   await page.click('button[name="Submit"]');
   await wait(4000);
 
@@ -78,8 +86,8 @@ async function wait(ms) {
   await wait(2000);
   const loginInput = await page.$('#login');
   if (loginInput) {
-    await page.type('#login', 'admin');
-    await page.type('#password', 'linux123');
+    await page.type('#login', SONAR_USER);
+    await page.type('#password', SONAR_PASSWORD);
     await page.click('button[type="submit"]');
     await wait(5000);
   }

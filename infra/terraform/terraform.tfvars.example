@@ -1,0 +1,40 @@
+# ==============================================================================
+# Ejemplo de variables para Terraform (Render Cloud + Neon PostgreSQL)
+#
+# INSTRUCCIONES:
+#   1. Copia este archivo a `terraform.tfvars` (ignorado por .gitignore):
+#        Copy-Item terraform.tfvars.example terraform.tfvars
+#   2. Sustituye todos los valores <PLACEHOLDER> por tus datos reales.
+#   3. Recomendado: exporta RENDER_API_KEY y RENDER_OWNER_ID como variables de
+#      entorno en tu terminal en lugar de escribirlas en disco:
+#        $env:RENDER_API_KEY  = "<YOUR_RENDER_API_KEY>"
+#        $env:RENDER_OWNER_ID = "<YOUR_RENDER_OWNER_ID>"
+#   4. NUNCA subas `terraform.tfvars` ni archivos `*.tfstate` a Git.
+# ==============================================================================
+
+# Opcional si ya definiste $env:RENDER_API_KEY y $env:RENDER_OWNER_ID:
+# render_api_key  = "<REEMPLAZAR_CON_TU_RENDER_API_KEY>"
+# render_owner_id = "<REEMPLAZAR_CON_TU_RENDER_OWNER_ID>"
+
+create_render_project      = true
+project_name               = "admin-proyectos"
+environment_name           = "production"
+service_name_prefix        = "admin-proyectos"
+wait_for_deploy_completion = false
+
+# Repositorio GitHub conectado a tu cuenta de Render
+github_repo_url = "https://github.com/Enrique1189/admin-proyectos"
+github_branch   = "main"
+
+# Región 'ohio' alineada con Neon PostgreSQL (us-east-2) para menor latencia
+render_region = "ohio"
+render_plan   = "free"
+auto_deploy   = true
+
+# Credenciales de Neon PostgreSQL (rotar contraseña si fue expuesta anteriormente)
+db_url       = "jdbc:postgresql://<your-neon-endpoint>-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
+db_username  = "<your-neon-username>"
+db_password  = "<your-neon-password>"
+db_pool_max  = 5
+jpa_ddl_auto = "update"
+jpa_show_sql = false

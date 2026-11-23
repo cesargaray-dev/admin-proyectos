@@ -1,8 +1,75 @@
+# =========================
+# Build & Java / Maven
+# =========================
 target/
 *.class
-*.log
+*.jar
+*.war
+*.ear
+build/
+
+# =========================
+# IDE & OS
+# =========================
 .idea/
 *.iml
 .vscode/
 .DS_Store
 Thumbs.db
+
+# =========================
+# Logs & Debug Artifacts
+# =========================
+*.log
+debug.log
+
+# =========================
+# Environment & Secrets (NEVER commit secrets)
+# =========================
+.env
+.env.*
+!.env.example
+!infra/.env.example
+!monitoring/.env.example
+*.pem
+*.key
+*.p12
+*.jks
+cookies.txt
+crumb.json
+
+# =========================
+# Terraform / IaC
+# =========================
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+!**/terraform.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# =========================
+# Security / CI Reports & Performance Artifacts
+# =========================
+semgrep-report.json
+dependency-check-report/
+reportes/
+performance/reports/*.json
+
+# =========================
+# Node / Local Tooling / Scratch
+# =========================
+node_modules/
+scratch/
+scratch_*.txt
