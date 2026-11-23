@@ -37,8 +37,8 @@ if (-not (Test-Path $tfvarsPath)) {
     exit 1
 }
 
-$tfvarsRaw = Get-Content -Path $tfvarsPath -Raw
-if ($tfvarsRaw -match '<your-neon-|REEMPLAZAR_CON_TU') {
+$tfvarsActive = (Get-Content -Path $tfvarsPath | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+if ($tfvarsActive -match '<your-neon-|REEMPLAZAR_CON_TU') {
     Write-Host "[ERROR] 'infra/terraform/terraform.tfvars' todavia contiene valores de ejemplo (<your-neon-...>)." -ForegroundColor Red
     Write-Host "        Edita db_url, db_username y db_password con tus credenciales reales de Neon antes de desplegar." -ForegroundColor Yellow
     exit 1
