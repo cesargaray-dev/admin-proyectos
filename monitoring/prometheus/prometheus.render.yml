@@ -44,8 +44,8 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 15s
     static_configs:
-      # Replace with your live Render Backend hostname (from `terraform output api_url`)
-      - targets: ["admin-proyectos-api.onrender.com"]
+      # Exact Render Backend hostname created by Terraform (`terraform output api_url`)
+      - targets: ["admin-proyectos-api-gestor.onrender.com"]
         labels:
           service: "api-gestor"
           application: "Ejercicio5MyAPIGestor"
@@ -58,7 +58,7 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 15s
     static_configs:
-      # Replace with your live Render Frontend hostname (from `terraform output client_url`)
+      # Exact Render Frontend hostname created by Terraform (`terraform output client_url`)
       - targets: ["admin-proyectos-cliente.onrender.com"]
         labels:
           service: "cliente"
