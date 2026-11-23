@@ -1,0 +1,55 @@
+# ==============================================================================
+# Grafana Promtail 2.9.10 Configuration — Docker Engine Service Discovery
+# ==============================================================================
+# Discovers running containers directly via Docker socket (works consistently on
+# Windows Docker Desktop / WSL2 and Linux) and pushes structured Spring Boot
+# logs (preserving OpenTelemetry traceId and spanId) to Loki.
+# ==============================================================================
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      # Strip leading slash from container name
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: "container"
+
+      # Capture Docker Compose service and project labels when available
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: "service"
+
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
+        target_label: "compose_project"
+
+      - source_labels: ["__meta_docker_container_log_stream"]
+        target_label: "stream"
+
+      # Scope log ingestion to Admin Proyectos application and observability containers
+      - source_labels: ["container", "service"]
+        regex: ".*(api-gestor|cliente|gestor|admin-proyectos|postgres|prometheus|alertmanager|grafana|loki).*"
+        action: keep
+
+    pipeline_stages:
+      - docker: {}
+      # Parse Spring Boot 3 OpenTelemetry log pattern:
+      #   %5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]
+      # Note: traceId and spanId stay in the log message (not promoted to Loki
+      # stream labels) to avoid high-cardinality index explosion.
+      - regex:
+          expression: '(?P<level>TRACE|DEBUG|INFO|WARN|ERROR)\s+\[(?P<app>[^,\]]*),(?P<traceId>[^,\]]*),(?P<spanId>[^\]]*)\]'
+      - labels:
+          level:
+          app:

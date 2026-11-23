@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reporte k6 Load Test — Admin Proyectos (local)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2rem auto; max-width: 960px; color: #1f2937; background: #f9fafb; }
+    .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    h1 { margin-top: 0; color: #111827; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+    .badge.pass { background: #dcfce7; color: #166534; }
+    .badge.fail { background: #fee2e2; color: #991b1b; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin: 1rem 0; }
+    .kpi { background: #f3f4f6; border-radius: 8px; padding: 1rem; }
+    .kpi-label { font-size: 0.8rem; color: #6b7280; text-transform: uppercase; }
+    .kpi-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; color: #111827; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+    th, td { text-align: left; padding: 0.65rem 0.75rem; border-bottom: 1px solid #e5e7eb; }
+    th { background: #f3f4f6; font-weight: 600; }
+    td.pass { color: #15803d; font-weight: 700; }
+    td.fail { color: #b91c1c; font-weight: 700; }
+    code { background: #f3f4f6; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Evaluación de Rendimiento k6 — Admin Proyectos</h1>
+    <p>
+      <span class="badge pass">UMBRALES SUPERADOS (PASS)</span>
+    </p>
+    <p><strong>Fecha (UTC):</strong> 2026-11-22T03:26:57.071Z | <strong>Entorno:</strong> <code>local</code> (escala 1x)</p>
+    <p><strong>API:</strong> <code>http://localhost:8081</code> | <strong>Cliente:</strong> <code>http://localhost:8082</code></p>
+    <p><strong>Etapas:</strong> 15s &rarr; 5 VUs | 30s &rarr; 10 VUs | 15s &rarr; 20 VUs | 15s &rarr; 0 VUs</p>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Solicitudes</div><div class="kpi-value">4816</div></div>
+      <div class="kpi"><div class="kpi-label">Throughput</div><div class="kpi-value">62.71 req/s</div></div>
+      <div class="kpi"><div class="kpi-label">Error Rate</div><div class="kpi-value">0.000%</div></div>
+      <div class="kpi"><div class="kpi-label">Latencia p95</div><div class="kpi-value">8.85 ms</div></div>
+      <div class="kpi"><div class="kpi-label">Latencia p99</div><div class="kpi-value">12.51 ms</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Latencia por Capa (ms)</h2>
+    <table>
+      <thead><tr><th>Capa / Servicio</th><th>avg</th><th>p50</th><th>p90</th><th>p95</th><th>p99</th><th>max</th></tr></thead>
+      <tbody>
+        <tr><td>Global HTTP</td><td>4.49</td><td>3.68</td><td>7.55</td><td>8.85</td><td>12.51</td><td>41.47</td></tr>
+        <tr><td>Backend REST (<code>api-gestor</code>)</td><td>3.68</td><td>3.44</td><td>4.71</td><td>5.44</td><td>8.96</td><td>39.93</td></tr>
+        <tr><td>Frontend Web (<code>cliente</code>)</td><td>5.29</td><td>5.72</td><td>8.56</td><td>10.04</td><td>13.88</td><td>41.47</td></tr>
+        <tr><td>Integración E2E (<code>cliente &rarr; api &rarr; DB</code>)</td><td>7.29</td><td>6.83</td><td>9.41</td><td>10.82</td><td>14.26</td><td>41.47</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Evaluación de Umbrales (Thresholds)</h2>
+    <table>
+      <thead><tr><th>Métrica</th><th>Condición</th><th>Estado</th></tr></thead>
+      <tbody><tr><td><code>business_checks_rate</code></td><td><code>rate>0.98</code></td><td class="pass">PASS</td></tr>
+<tr><td><code>http_req_failed</code></td><td><code>rate<0.02</code></td><td class="pass">PASS</td></tr>
+<tr><td><code>client_response_time</code></td><td><code>p(95)<1500</code></td><td class="pass">PASS</td></tr>
+<tr><td><code>e2e_proxy_response_time</code></td><td><code>p(95)<1500</code></td><td class="pass">PASS</td></tr>
+<tr><td><code>api_response_time</code></td><td><code>p(95)<1000</code></td><td class="pass">PASS</td></tr>
+<tr><td><code>http_req_duration</code></td><td><code>p(95)<1500</code></td><td class="pass">PASS</td></tr>
+<tr><td><code>http_req_duration</code></td><td><code>p(99)<2500</code></td><td class="pass">PASS</td></tr></tbody>
+    </table>
+  </div>
+</body>
+</html>

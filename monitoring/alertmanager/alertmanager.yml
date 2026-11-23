@@ -1,0 +1,51 @@
+# ==============================================================================
+# Alertmanager Configuration — Admin Proyectos
+# ==============================================================================
+# Note: Webhook URLs below are safe local placeholders (zero secrets in repo).
+# For external Slack/Discord/Teams notifications, inject a real webhook URL
+# outside Git (e.g., mounted secret file or private local override).
+# ==============================================================================
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ["alertname", "service", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 2h
+  receiver: "default-webhook"
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: "critical-webhook"
+      group_wait: 10s
+      repeat_interval: 30m
+    - matchers:
+        - severity="warning"
+      receiver: "warning-webhook"
+      group_wait: 30s
+      repeat_interval: 2h
+
+inhibit_rules:
+  # Suppress warning-level resource/latency alerts when the service itself is DOWN
+  - source_matchers:
+      - alertname="ServiceDown"
+    target_matchers:
+      - severity="warning"
+    equal: ["service"]
+
+receivers:
+  - name: "default-webhook"
+    webhook_configs:
+      - url: "http://localhost:5001/alerts/default"
+        send_resolved: true
+
+  - name: "critical-webhook"
+    webhook_configs:
+      - url: "http://localhost:5001/alerts/critical"
+        send_resolved: true
+
+  - name: "warning-webhook"
+    webhook_configs:
+      - url: "http://localhost:5001/alerts/warning"
+        send_resolved: true

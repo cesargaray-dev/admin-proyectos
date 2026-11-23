@@ -1,0 +1,47 @@
+# ==============================================================================
+# Prometheus Configuration — Local Docker Stack (devops-net)
+# ==============================================================================
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    environment: "local-docker"
+    project: "admin-proyectos"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: "prometheus"
+          tier: "observability"
+
+  - job_name: "api-gestor"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["api-gestor:8081"]
+        labels:
+          service: "api-gestor"
+          application: "Ejercicio5MyAPIGestor"
+          tier: "backend"
+
+  - job_name: "cliente"
+    metrics_path: "/actuator/prometheus"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["cliente:8082"]
+        labels:
+          service: "cliente"
+          application: "Ejercicio5Cliente"
+          tier: "frontend"
