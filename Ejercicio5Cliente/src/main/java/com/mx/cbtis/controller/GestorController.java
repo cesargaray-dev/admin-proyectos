@@ -7,6 +7,8 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -34,25 +36,52 @@ import com.mx.cbtis.modelo.Usuario;
 public class GestorController {
 
 	private static final Logger log = LoggerFactory.getLogger(GestorController.class);
+	private static final String DEFAULT_API_BASE_URL = "http://localhost:8081";
 
-	// CAMBIO: el RestTemplate ahora se inyecta (antes se creaba con new en cada metodo)
+	// CAMBIO: el RestTemplate y la URL base de la API ahora se inyectan (compatibles con Docker/Render)
 	private final RestTemplate template;
+	private final String apiBaseUrl;
 
 	public GestorController() {
-		this(new RestTemplate());
+		this(new RestTemplate(), DEFAULT_API_BASE_URL);
 	}
 
 	public GestorController(RestTemplate template) {
-		this.template = template;
+		this(template, DEFAULT_API_BASE_URL);
+	}
+
+	@Autowired
+	public GestorController(RestTemplate template,
+			@Value("${api.base-url:" + DEFAULT_API_BASE_URL + "}") String apiBaseUrl) {
+		this.template = template != null ? template : new RestTemplate();
+		this.apiBaseUrl = normalizeBaseUrl(apiBaseUrl);
+	}
+
+	private static String normalizeBaseUrl(String baseUrl) {
+		if (baseUrl == null || baseUrl.isBlank()) {
+			return DEFAULT_API_BASE_URL;
+		}
+		String trimmed = baseUrl.trim();
+		while (trimmed.endsWith("/")) {
+			trimmed = trimmed.substring(0, trimmed.length() - 1);
+		}
+		return trimmed.isEmpty() ? DEFAULT_API_BASE_URL : trimmed;
+	}
+
+	public String getApiBaseUrl() {
+		return this.apiBaseUrl;
+	}
+
+	private String apiUrl(String path) {
+		return this.apiBaseUrl + path;
 	}
 
 	// CAMBIO (manejo de errores): convierte un fallo al llamar a la API en una respuesta controlada.
 	// - Error 4xx de la API (ej. 400, 404): se propaga el mismo codigo con un mensaje.
 	// - API caida (conexion rechazada) o error 5xx: 503 Service Unavailable con mensaje.
 	private ResponseEntity<Object> errorServicio(RestClientException e) {
-		Map<String, String> cuerpo = new HashMap<String, String>();
-		if (e instanceof HttpClientErrorException) {
-			HttpClientErrorException ex = (HttpClientErrorException) e;
+		Map<String, String> cuerpo = new HashMap<>();
+		if (e instanceof HttpClientErrorException ex) {
 			cuerpo.put("mensaje", "El servidor rechazo la solicitud");
 			return ResponseEntity.status(ex.getStatusCode()).body(cuerpo);
 		}
@@ -98,7 +127,7 @@ public class GestorController {
 			return new ModelAndView("redirect:/register?error");
 		}
 
-		String urlservicebd = "http://localhost:8081/addUsuario";
+		String urlservicebd = apiUrl("/addUsuario");
 		try {
 			template.postForEntity(urlservicebd, usuario, Integer.class);
 		} catch (RestClientException e) {
@@ -121,7 +150,7 @@ public class GestorController {
 	@PostMapping("/saveProyecto")
 	public ModelAndView setSaveProyecto(@ModelAttribute Proyectos proyecto) {
 
-		String urlservicebd = "http://localhost:8081/addProyecto";
+		String urlservicebd = apiUrl("/addProyecto");
 		template.postForEntity(urlservicebd, proyecto, Integer.class);
 
 		return new ModelAndView("redirect:/inicio");
@@ -131,17 +160,15 @@ public class GestorController {
 	@PostMapping("/consultarProyectos")
 	public ResponseEntity<Object> consultarProyectos(Model modelo) {
 
-		String urlservicebd = "http://localhost:8081/buscarProyectos";
+		String urlservicebd = apiUrl("/buscarProyectos");
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		try {
-			Proyectos[]  response = template.postForObject(urlservicebd, headers, Proyectos[].class);
+			Proyectos[] response = template.postForObject(urlservicebd, headers, Proyectos[].class);
 			List<Proyectos> proyectos = Arrays.asList(response);
 			modelo.addAttribute("listaProyectos", proyectos);
 
-			ResponseEntity<Object> objeto = new ResponseEntity<Object>(proyectos, HttpStatusCode.valueOf(200));
-
-			return objeto;
+			return new ResponseEntity<>(proyectos, HttpStatusCode.valueOf(200));
 		} catch (RestClientException e) {
 			// CAMBIO: API caida o con error -> respuesta controlada (503)
 			return errorServicio(e);
@@ -151,44 +178,41 @@ public class GestorController {
 	@PostMapping("/eliminarProyecto")
 	public ModelAndView eliminarProyecto(@RequestBody Proyectos proyecto) {
 		log.info("El id del proyecto es: {}", proyecto.getId_proyecto());
-		String urlservicebd = "http://localhost:8081/deleteProyecto";
-		HttpEntity<Proyectos> request = new HttpEntity<Proyectos>(proyecto);
+		String urlservicebd = apiUrl("/deleteProyecto");
+		HttpEntity<Proyectos> request = new HttpEntity<>(proyecto);
 		template.exchange(urlservicebd, HttpMethod.DELETE, request, Integer.class);
 
 		return new ModelAndView("redirect:/inicio");
 	}
 
-	@PostMapping ("/actualizarProyecto")
+	@PostMapping("/actualizarProyecto")
 	public ResponseEntity<Object> updateProyecto(@RequestBody Proyectos proyecto) {
-		Map<String,Integer> params = new HashMap<String,Integer>();
+		Map<String, Integer> params = new HashMap<>();
 		params.put("id_proyecto", proyecto.getId_proyecto());
-		String urlservicebd = "http://localhost:8081/buscarProyecto?id_proyecto={id_proyecto}";
+		String urlservicebd = apiUrl("/buscarProyecto?id_proyecto={id_proyecto}");
 		try {
 			Proyectos proyectos = template.getForObject(urlservicebd, Proyectos.class, params);
 
 			// CAMBIO: si el proyecto no existe (la API responde 404 o un objeto vacio) -> 404 controlado
 			if (proyectos == null || proyectos.getId_proyecto() == null) {
-				Map<String, String> cuerpo = new HashMap<String, String>();
+				Map<String, String> cuerpo = new HashMap<>();
 				cuerpo.put("mensaje", "El proyecto no existe");
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(cuerpo);
 			}
 
-			ResponseEntity<Object> objeto = new ResponseEntity<Object>(proyectos, HttpStatusCode.valueOf(200));
-
-			return objeto;
+			return new ResponseEntity<>(proyectos, HttpStatusCode.valueOf(200));
 		} catch (RestClientException e) {
 			return errorServicio(e);
 		}
 	}
 
-
 	@PostMapping("/verificarLogin")
 	public ResponseEntity<Object> verificarUsuario(@RequestBody Usuario paramUser) {
-		String urlservicebd = "http://localhost:8081/getUsuarioLogin";
+		String urlservicebd = apiUrl("/getUsuarioLogin");
 		try {
-			ResponseEntity<Usuario> response = template.postForEntity(urlservicebd,paramUser,Usuario.class);
+			ResponseEntity<Usuario> response = template.postForEntity(urlservicebd, paramUser, Usuario.class);
 
-			return new ResponseEntity<Object>(response.getBody(), response.getStatusCode());
+			return new ResponseEntity<>(response.getBody(), response.getStatusCode());
 		} catch (RestClientException e) {
 			// CAMBIO: API caida -> 503 controlado
 			return errorServicio(e);
@@ -199,23 +223,19 @@ public class GestorController {
 	@PostMapping("/consultarUsuarios")
 	public ResponseEntity<Object> consultarUsuarios(Model modelo) {
 
-		String urlservicebd = "http://localhost:8081/buscarUsuarios";
+		String urlservicebd = apiUrl("/buscarUsuarios");
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
-		Usuario[]  response = template.postForObject(urlservicebd, headers, Usuario[].class);
+		Usuario[] response = template.postForObject(urlservicebd, headers, Usuario[].class);
 		List<Usuario> usuarios = Arrays.asList(response);
 		modelo.addAttribute("listaUsuarios", usuarios);
 
-		ResponseEntity<Object> objeto = new ResponseEntity<Object>(usuarios, HttpStatusCode.valueOf(200));
-
-		return objeto;
+		return new ResponseEntity<>(usuarios, HttpStatusCode.valueOf(200));
 	}
 
 	@PostMapping("/obtenerTareas")
 	public ResponseEntity<List<Tareas>> obtenerTareas(@RequestBody Tareas idProyecto, Model modelo) {
-		String urlservicebd = "http://localhost:8081/getTarea";
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
+		String urlservicebd = apiUrl("/getTarea");
 		Tareas[] response = template.postForObject(urlservicebd, idProyecto, Tareas[].class);
 		List<Tareas> listaTareas = Arrays.asList(response);
 		modelo.addAttribute("tareas", listaTareas);
@@ -224,16 +244,14 @@ public class GestorController {
 
 	@PostMapping("/obtenerComentarios")
 	public ResponseEntity<List<Comentarios>> obtenerComentarios(@RequestBody Comentarios idComentario, Model modelo) {
-		String urlservicebd = "http://localhost:8081/getComentario";
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
+		String urlservicebd = apiUrl("/getComentario");
 		Comentarios[] response = template.postForObject(urlservicebd, idComentario, Comentarios[].class);
 		List<Comentarios> listaComentarios = Arrays.asList(response);
 		modelo.addAttribute("comentarios", listaComentarios);
 		return ResponseEntity.ok(listaComentarios);
 	}
 
-	//Liliana
+	// Liliana
 	@GetMapping("/proyecto")
 	public String getProyecto(Model modelo) {
 		Tareas tarea = new Tareas();
@@ -245,7 +263,7 @@ public class GestorController {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 
-		String urlservicebdUsuario = "http://localhost:8081/buscarUsuarios";
+		String urlservicebdUsuario = apiUrl("/buscarUsuarios");
 		try {
 			Usuario[] responseUsuario = template.postForObject(urlservicebdUsuario, headers, Usuario[].class);
 			List<Usuario> usuarios = Arrays.asList(responseUsuario);
@@ -262,8 +280,6 @@ public class GestorController {
 	@GetMapping("/tarea")
 	public String getTarea(Model modelo) {
 
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
 		Tareas tareas = new Tareas();
 		modelo.addAttribute("tareas", tareas);
 
@@ -283,7 +299,7 @@ public class GestorController {
 			return mav;
 		}
 
-		String urlservicebd = "http://localhost:8081/addTareas";
+		String urlservicebd = apiUrl("/addTareas");
 		try {
 			template.postForEntity(urlservicebd, tareas, Integer.class);
 		} catch (RestClientException e) {
@@ -293,47 +309,45 @@ public class GestorController {
 
 		return mav;
 	}
+
 	@PostMapping("/saveComentario")
 	public ResponseEntity<Object> setSaveComentario(@RequestBody Comentarios comentarios) {
 
-		String urlservicebd = "http://localhost:8081/addComentario";
+		String urlservicebd = apiUrl("/addComentario");
 		try {
 			ResponseEntity<Integer> response = template.postForEntity(urlservicebd, comentarios, Integer.class);
-			return new ResponseEntity<Object>(response.getBody(), response.getStatusCode());
+			return new ResponseEntity<>(response.getBody(), response.getStatusCode());
 		} catch (RestClientException e) {
 			return errorServicio(e);
 		}
 	}
 
-
 	@PostMapping("/actualizarTarea")
-	public ResponseEntity<Object> updateTarea(@RequestBody  Tareas tarea) {
-		Map<String,Integer> params = new HashMap<String,Integer>();
+	public ResponseEntity<Object> updateTarea(@RequestBody Tareas tarea) {
+		Map<String, Integer> params = new HashMap<>();
 		params.put("id_tarea", tarea.getId_tarea());
-		String urlservicebd = "http://localhost:8081/buscarTarea?id_tarea={id_tarea}";
+		String urlservicebd = apiUrl("/buscarTarea?id_tarea={id_tarea}");
 		Tareas tareas = template.getForObject(urlservicebd, Tareas.class, params);
 
-		ResponseEntity<Object> objeto = new ResponseEntity<Object>(tareas, HttpStatusCode.valueOf(200));
-
-		return objeto;
+		return new ResponseEntity<>(tareas, HttpStatusCode.valueOf(200));
 	}
 
 	@PostMapping("/eliminarTarea")
 	public ModelAndView eliminarTarea(@RequestBody Tareas tareas) {
 		log.info("El id de la tarea es: {}", tareas.getId_tarea());
-		String urlservicebd = "http://localhost:8081/deleteTareas";
-		HttpEntity<Tareas> request = new HttpEntity<Tareas>(tareas);
+		String urlservicebd = apiUrl("/deleteTareas");
+		HttpEntity<Tareas> request = new HttpEntity<>(tareas);
 		template.exchange(urlservicebd, HttpMethod.DELETE, request, Integer.class);
 
 		return new ModelAndView("redirect:/proyecto");
 	}
 
 	@PostMapping("/verificarTarea")
-	public ResponseEntity<Object> verificarTarea(@RequestBody Tareas paramName){
-		String urlservicebd = "http://localhost:8081/addTareas";
+	public ResponseEntity<Object> verificarTarea(@RequestBody Tareas paramName) {
+		String urlservicebd = apiUrl("/addTareas");
 		try {
 			ResponseEntity<Integer> response = template.postForEntity(urlservicebd, paramName, Integer.class);
-			return new ResponseEntity<Object>(response.getBody(), response.getStatusCode());
+			return new ResponseEntity<>(response.getBody(), response.getStatusCode());
 		} catch (RestClientException e) {
 			// CAMBIO: 400 de la API (ej. fecha invalida) se propaga; API caida -> 503
 			return errorServicio(e);
@@ -341,35 +355,30 @@ public class GestorController {
 	}
 
 	@PostMapping("/cambiosTareas")
-	public ResponseEntity<Integer> cambiosTareas(@RequestBody Tareas paramDatos){
-		String urlservicebd = "http://localhost:8081/addTareas";
-		ResponseEntity<Integer> response = template.postForEntity(urlservicebd, paramDatos, Integer.class);
-		return response;
+	public ResponseEntity<Integer> cambiosTareas(@RequestBody Tareas paramDatos) {
+		String urlservicebd = apiUrl("/addTareas");
+		return template.postForEntity(urlservicebd, paramDatos, Integer.class);
 	}
 
 	@PostMapping("/consultarTareas")
 	public ResponseEntity<Object> consultarTareas() {
-		String urlservicebd = "http://localhost:8081/buscarTareas";
+		String urlservicebd = apiUrl("/buscarTareas");
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
-		Tareas[]  response = template.postForObject(urlservicebd, headers, Tareas[].class);
+		Tareas[] response = template.postForObject(urlservicebd, headers, Tareas[].class);
 		List<Tareas> tareas = Arrays.asList(response);
-		ResponseEntity<Object> objeto = new ResponseEntity<Object>(tareas, HttpStatusCode.valueOf(200));
 
-		return objeto;
-
+		return new ResponseEntity<>(tareas, HttpStatusCode.valueOf(200));
 	}
 
 	@PostMapping("/consultarComentarios")
 	public ResponseEntity<Object> consultarComentarios() {
-		String urlservicebd = "http://localhost:8081/buscarComentarios";
+		String urlservicebd = apiUrl("/buscarComentarios");
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
-		Comentarios[]  response = template.postForObject(urlservicebd, headers, Comentarios[].class);
+		Comentarios[] response = template.postForObject(urlservicebd, headers, Comentarios[].class);
 		List<Comentarios> comentarios = Arrays.asList(response);
-		ResponseEntity<Object> objeto = new ResponseEntity<Object>(comentarios, HttpStatusCode.valueOf(200));
 
-		return objeto;
-
+		return new ResponseEntity<>(comentarios, HttpStatusCode.valueOf(200));
 	}
 }

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import com.mx.cbtis.gestor.modelo.Usuario;
 import com.mx.cbtis.gestor.repository.UsuarioRepository;
@@ -137,5 +139,14 @@ class UsuarioControllerTest {
 		assertEquals(0, controller.updateUsuario(null));
 		assertEquals(0, controller.deleteUsuario(null));
 		verifyNoInteractions(usuariotable);
+	}
+
+	@Test
+	@DisplayName("UT-38 UsuarioController: getUsuario conserva la anotacion @GetMapping('/buscarUsuario')")
+	void buscarUsuario_tieneAnotacionGetMapping() throws NoSuchMethodException {
+		Method metodo = UsuarioController.class.getMethod("getUsuario", int.class);
+		GetMapping mapping = metodo.getAnnotation(GetMapping.class);
+		assertEquals(1, mapping.value().length);
+		assertEquals("/buscarUsuario", mapping.value()[0]);
 	}
 }

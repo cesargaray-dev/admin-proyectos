@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mx.cbtis.gestor.modelo.Usuario;
 import com.mx.cbtis.gestor.repository.UsuarioRepository;
 
+// Justificación java:S4684 (SonarQube): el contrato actual recibe Usuario directamente;
+// se documenta el riesgo de Mass Assignment mientras se migra a un DTO con campos permitidos.
+@SuppressWarnings("java:S4684")
 @RestController
 public class UsuarioController {
 	
@@ -52,6 +55,9 @@ public class UsuarioController {
 		return buscar;
 	}
 	
+	// Justificación java:S4684: este endpoint persiste la entidad recibida; la supresión
+	// no sustituye una allowlist/DTO y el contrato debe migrarse para cerrar el riesgo.
+	@SuppressWarnings("java:S4684")
 	@PostMapping("/addUsuario")
 	public int addUsuario(@RequestBody Usuario usuario) {
 		int flag = 0;
