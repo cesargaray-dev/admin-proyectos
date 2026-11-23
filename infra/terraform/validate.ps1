@@ -23,7 +23,8 @@ if ($useLocalTf) {
     Push-Location $tfDir
     try {
         Write-Host "=== 1/3 Checking HCL formatting (terraform fmt -check) ===" -ForegroundColor Yellow
-        & terraform fmt -check -recursive -diff
+        $fmtTargets = @(Get-ChildItem -Filter '*.tf' | ForEach-Object { $_.Name })
+        & terraform fmt -check -diff @fmtTargets
         if ($LASTEXITCODE -ne 0) { throw "terraform fmt failed ($LASTEXITCODE)" }
 
         Write-Host "=== 2/3 Initializing providers without remote backend ===" -ForegroundColor Yellow
@@ -51,7 +52,7 @@ elseif (Get-Command docker -ErrorAction SilentlyContinue) {
         "terraform init -backend=false -input=false -no-color"
     }
 
-    $shellScript = "set -e; echo '=== 1/3 Checking HCL formatting (terraform fmt -check) ==='; terraform fmt -check -recursive -diff; echo '=== 2/3 Initializing providers without remote backend ==='; $initCmd; echo '=== 3/3 Validating Terraform schema and references ==='; terraform validate -no-color"
+    $shellScript = "set -e; echo '=== 1/3 Checking HCL formatting (terraform fmt -check) ==='; terraform fmt -check -diff *.tf; echo '=== 2/3 Initializing providers without remote backend ==='; $initCmd; echo '=== 3/3 Validating Terraform schema and references ==='; terraform validate -no-color"
 
     Write-Host "[docker $TerraformImage] Running fmt -> init -> validate..." -ForegroundColor Cyan
     & docker run --rm `
