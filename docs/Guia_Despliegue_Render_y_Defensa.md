@@ -13,7 +13,7 @@ Verifica que tienes listo lo siguiente en tu equipo Windows:
 
 - [ ] **Docker Desktop** encendido y ejecutándose (backend WSL2 activo).
 - [ ] **Grafana k6** instalado (`C:\Program Files\k6\k6.exe` o disponible en `PATH`).
-- [ ] **Git** sincronizado con tu repositorio `https://github.com/Enrique1189/admin-proyectos` (rama `main` actualizada con todos los cambios de Unidad III).
+- [ ] **Git** sincronizado con tu repositorio `https://github.com/cesargaray-dev/admin-proyectos` (rama `main` actualizada con todos los cambios de Unidad III).
 - [ ] Cuenta activa en **Render** (`https://dashboard.render.com`) vinculada a tu cuenta de GitHub.
 - [ ] Acceso a tu consola de **Neon PostgreSQL** (`https://console.neon.tech`).
 - [ ] *(Opcional)* CLI nativa de **Terraform**; si no la tienes instalada, todos los comandos de esta guía funcionan usando el contenedor oficial `hashicorp/terraform` a través de Docker.
@@ -79,7 +79,7 @@ Copy-Item infra\terraform\terraform.tfvars.example infra\terraform\terraform.tfv
 ```
 
 Abre `infra/terraform/terraform.tfvars` en tu editor y llena los valores reales:
-- `github_repo_url = "https://github.com/Enrique1189/admin-proyectos"` y `github_branch = "main"`.
+- `github_repo_url = "https://github.com/cesargaray-dev/admin-proyectos"` y `github_branch = "main"`.
 - `render_region = "ohio"` (alineada con Neon `us-east-2` para mínima latencia) y `render_plan = "free"`.
 - `db_url` (cadena JDBC completa con `?sslmode=require`), `db_username` y `db_password` (la contraseña recién rotada en el Paso 1).
 - Deja comentadas `render_api_key` y `render_owner_id` en el archivo para que Terraform las lea desde `$env:RENDER_API_KEY` y `$env:RENDER_OWNER_ID` en memoria (mayor seguridad).
@@ -253,7 +253,7 @@ Revisa los reportes generados en `performance/reports/` (archivos `.json`, `.md`
 
 1. **Despierta ambos servicios en Render** abriendo `$API_URL/actuator/health` y `$CLIENT_URL` para evitar esperar el *cold start* frente al profesor.
 2. Deja abiertas en pestañas ordenadas del navegador:
-   1. Repositorio GitHub (`Enrique1189/admin-proyectos`)
+   1. Repositorio GitHub (`cesargaray-dev/admin-proyectos`)
    2. Jenkins local (`http://localhost:8080`) y SonarQube (`http://localhost:9000`)
    3. Dashboard de Render (`api-gestor` y `cliente` en verde `Live`)
    4. Aplicación desplegada en vivo (`$CLIENT_URL`) y `/actuator/health`

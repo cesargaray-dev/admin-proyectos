@@ -53,7 +53,7 @@ variable "service_name_prefix" {
 variable "github_repo_url" {
   description = "GitHub repository URL containing both Spring Boot microservices and their Dockerfiles."
   type        = string
-  default     = "https://github.com/Enrique1189/admin-proyectos"
+  default     = "https://github.com/cesargaray-dev/admin-proyectos"
 }
 
 variable "github_branch" {

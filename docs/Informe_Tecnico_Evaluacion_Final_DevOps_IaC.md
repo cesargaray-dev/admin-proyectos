@@ -13,7 +13,7 @@
 | **Grupo:** | `[Editable: especificar grupo, p. ej. IDGS-XX]` |
 | **Periodo:** | `[Editable: especificar periodo cuatrimestral, p. ej. Septiembre – Diciembre 2026]` |
 | **Fecha:** | Diciembre 2026 *(Defensa presencial: viernes 4 de diciembre de 2026)* |
-| **Repositorio GitHub:** | `https://github.com/Enrique1189/admin-proyectos` |
+| **Repositorio GitHub:** | `https://github.com/cesargaray-dev/admin-proyectos` |
 | **Ecosistema Tecnológico:** | Java 21 LTS · Spring Boot 3.3.5 · Jenkins LTS · Maven/Surefire/JaCoCo · SonarQube · Semgrep · Docker · Terraform (`render-oss/render`) · Render Cloud · Neon PostgreSQL · Prometheus · Alertmanager · Grafana · Loki/Promtail · OpenTelemetry · Grafana k6 |
 
 ---
@@ -57,7 +57,7 @@ El presente proyecto no parte desde cero, sino que da continuidad evolutiva a la
   - Incorporación en ambos `pom.xml` de `maven-surefire-plugin:3.3.1`, `jacoco-maven-plugin:0.8.12` (umbral mínimo de cobertura de instrucciones del 80%) y `sonar-maven-plugin:5.5.0.6356`.
   - Construcción del entorno CI local en Docker Compose con **Jenkins LTS (JDK 21)** y **SonarQube Community LTS**, logrando en la Unidad II **53 pruebas unitarias (95.2% de cobertura en SonarQube)** para `Ejercicio5Cliente` y **43 pruebas unitarias (99.4% de cobertura en SonarQube)** para `Ejercicio5MyAPIGestor`, además de la remediación posterior de hallazgos de calidad (`java:S106`, `java:S1854`) y seguridad SAST con Semgrep (integridad SRI en CDN de `home.html` y `proyecto.html`, cerrando en 0 hallazgos en la revisión final de Unidad II).
 - **Salto arquitectónico de la Unidad III:**
-  - Unificación operativa en el repositorio `https://github.com/Enrique1189/admin-proyectos` con empaquetado Docker productivo para ambos microservicios.
+  - Unificación operativa en el repositorio `https://github.com/cesargaray-dev/admin-proyectos` con empaquetado Docker productivo para ambos microservicios.
   - Migración de configuración estática a configuración 12-Factor orientada a nube (`PORT`, `API_BASE_URL`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`), eliminando secretos del repositorio.
   - Incorporación formal de IaC con Terraform (`infra/terraform/`), despliegue en Render Cloud + Neon PostgreSQL, stack completo de observabilidad (`monitoring/`) y evaluación de rendimiento con k6 (`performance/`).
 
@@ -85,7 +85,7 @@ El siguiente diagrama representa el circuito DevOps completo implementado para `
 ```mermaid
 flowchart LR
     subgraph DEV["1. Desarrollo y Control de Versiones"]
-        A["Desarrollador<br/>(Java 21 + Git)"] --> B["GitHub Monorepo<br/>Enrique1189/admin-proyectos"]
+        A["Desarrollador<br/>(Java 21 + Git)"] --> B["GitHub Monorepo<br/>cesargaray-dev/admin-proyectos"]
     end
 
     subgraph CI["2. Integración Continua y DevSecOps (Jenkins Local)"]
@@ -178,7 +178,7 @@ flowchart TD
 
 ### 2.3. Explicación Detallada del Flujo Completo
 
-1. **Confirmación de cambios en Git/GitHub:** Cada cambio de código, configuración de contenedor, módulo Terraform o regla de observabilidad queda versionado en `Enrique1189/admin-proyectos`. Las credenciales y el estado de Terraform quedan bloqueados por `.gitignore`.
+1. **Confirmación de cambios en Git/GitHub:** Cada cambio de código, configuración de contenedor, módulo Terraform o regla de observabilidad queda versionado en `cesargaray-dev/admin-proyectos`. Las credenciales y el estado de Terraform quedan bloqueados por `.gitignore`.
 2. **Integración Continua y Validación DevSecOps (Jenkins Local):** Al ejecutarse el `Jenkinsfile`, Jenkins compila ambos microservicios con **JDK 21** y **Maven 3.9.9**, ejecuta las pruebas unitarias con **Maven Surefire**, exige una cobertura de instrucciones **JaCoCo $\ge 80\%$**, envía el análisis de calidad a **SonarQube**, ejecuta el escaneo SAST con **Semgrep**, verifica que ambos `Dockerfile` construyan imágenes válidas y valida sintaxis/formato del código Terraform (`terraform fmt -check` y `terraform validate`).
 3. **Aprovisionamiento Declarativo con IaC (Terraform):** Terraform utiliza el proveedor oficial `render-oss/render` para declarar ambos servicios web Docker en Render, inyectar de forma segura las variables de base de datos (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`) y resolver automáticamente la dependencia entre frontend y backend inyectando la URL pública del API en `API_BASE_URL` del cliente.
 4. **Despliegue Continuo y Ejecución en la Nube (Render + Neon):** Render construye cada contenedor desde el `Dockerfile` correspondiente, inyecta la variable dinámica `PORT`, valida disponibilidad mediante `/actuator/health` y expone ambos servicios detrás de HTTPS gestionado, mientras el backend persiste datos en **Neon PostgreSQL** mediante TLS. Desde Jenkins, la etapa CD opcional puede disparar *Deploy Hooks* de Render y verificar salud + prueba *smoke* automáticamente.
@@ -249,7 +249,7 @@ Toda la infraestructura en la nube está definida de forma modular, bloqueada po
 
 ### 3.2. Diseño Declarativo de Recursos (`render-oss/render v1.9.1`)
 
-El módulo aprovisiona un proyecto lógico y dos servicios web Docker independientes desde el repositorio `https://github.com/Enrique1189/admin-proyectos` (rama parametrizable `main`), utilizando por defecto la región **`ohio`** —**alineada geográficamente con Neon PostgreSQL (`us-east-2`, Ohio)** para minimizar la latencia de red entre aplicación y base de datos— y el plan **`free`** (configurable a `starter`..`pro_ultra` sin modificar el código):
+El módulo aprovisiona un proyecto lógico y dos servicios web Docker independientes desde el repositorio `https://github.com/cesargaray-dev/admin-proyectos` (rama parametrizable `main`), utilizando por defecto la región **`ohio`** —**alineada geográficamente con Neon PostgreSQL (`us-east-2`, Ohio)** para minimizar la latencia de red entre aplicación y base de datos— y el plan **`free`** (configurable a `starter`..`pro_ultra` sin modificar el código):
 
 1. **Agrupación Lógica (`render_project.admin_proyectos`):**
    - Organiza ambos microservicios dentro del proyecto `admin-proyectos` y entorno `production` (`protected_status = "unprotected"`, `network_isolated = false`).
@@ -320,7 +320,7 @@ El pipeline raíz en `Jenkinsfile` (10 etapas declarativas sobre `JDK21` y `Mave
 
 | Orden | Etapa (`Stage`) | Herramientas / Acción | Criterio de Calidad / Compuerta |
 | :---: | :--- | :--- | :--- |
-| **1** | `Checkout` | `checkout scm` (`Enrique1189/admin-proyectos`) | Sincronización determinista de la rama activa. |
+| **1** | `Checkout` | `checkout scm` (`cesargaray-dev/admin-proyectos`) | Sincronización determinista de la rama activa. |
 | **2** | `Build & Test – Cliente` | `mvn clean verify -Djava.version=21` + JUnit + JaCoCo | 0 pruebas fallidas y cobertura instrucciones $\ge 80\%$. |
 | **3** | `Build & Test – APIGestor` | `mvn clean verify -Djava.version=21` + JUnit + JaCoCo | 0 pruebas fallidas y cobertura instrucciones $\ge 80\%$. |
 | **4** | `SonarQube Analysis` *(paralelo)* | `mvn sonar:sonar` (`Ejercicio5Cliente` y `Ejercicio5MyAPIGestor`) hacia `http://sonarqube:9000` usando `credentials('sonarqube-token')` | Análisis estático de bugs, vulnerabilidades y cobertura JaCoCo XML. |

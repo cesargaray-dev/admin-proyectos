@@ -23,7 +23,7 @@ service_name_prefix        = "admin-proyectos"
 wait_for_deploy_completion = false
 
 # Repositorio GitHub conectado a tu cuenta de Render
-github_repo_url = "https://github.com/Enrique1189/admin-proyectos"
+github_repo_url = "https://github.com/cesargaray-dev/admin-proyectos"
 github_branch   = "main"
 
 # Región 'ohio' alineada con Neon PostgreSQL (us-east-2) para menor latencia
