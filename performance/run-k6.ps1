@@ -8,7 +8,7 @@
     dentro de performance/reports/.
 
 .PARAMETER Mode
-    Tipo de prueba: 'smoke' (por defecto) o 'load'.
+    Tipo de prueba: 'smoke' (por defecto), 'load' o 'variable' (oleadas variables para validar k6 + Grafana).
 
 .PARAMETER Target
     Entorno objetivo: 'local' (por defecto) o 'render'. En modo 'render', escala
@@ -35,7 +35,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('smoke', 'load')]
+    [ValidateSet('smoke', 'load', 'variable')]
     [string]$Mode = 'smoke',
 
     [ValidateSet('local', 'render')]
@@ -96,7 +96,11 @@ if ([string]::IsNullOrWhiteSpace($ReportName)) {
     $ReportName = "$Mode-$Target-$timestamp"
 }
 
-$scriptFile = if ($Mode -eq 'smoke') { 'performance/k6/smoke-test.js' } else { 'performance/k6/load-test.js' }
+$scriptFile = switch ($Mode) {
+    'smoke'    { 'performance/k6/smoke-test.js' }
+    'load'     { 'performance/k6/load-test.js' }
+    'variable' { 'performance/k6/variable-load-test.js' }
+}
 $reportPrefix = "performance/reports/$ReportName"
 
 Write-Host "====================================================================" -ForegroundColor Cyan

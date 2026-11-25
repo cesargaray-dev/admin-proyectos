@@ -1,0 +1,240 @@
+name: Circuito DevOps CI/CD + IaC (GitHub Actions + SonarCloud + Render)
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - 'evidencia_entrega/**'
+      - '*.md'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      deploy_to_render:
+        description: 'Disparar despliegue continuo en Render (requiere secrets Deploy Hooks)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================================
+  # 1. Build, Pruebas Unitarias (Surefire), Cobertura >=80% (JaCoCo) y SonarCloud
+  # ============================================================================
+  build-test-sonarcloud:
+    name: Build, JaCoCo >=80% & SonarCloud (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: Ejercicio5MyAPIGestor
+            sonar_key_var: SONAR_PROJECT_KEY_APIGESTOR
+            default_sonar_key: cesargaray-dev_admin-proyectos-apigestor
+          - service: Ejercicio5Cliente
+            sonar_key_var: SONAR_PROJECT_KEY_CLIENTE
+            default_sonar_key: cesargaray-dev_admin-proyectos-cliente
+
+    steps:
+      - name: Checkout repositorio (historial completo para SonarCloud)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Java 21 LTS (Temurin) + cache Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: '${{ matrix.service }}/pom.xml'
+
+      - name: Compilar, ejecutar pruebas Surefire y generar reporte JaCoCo
+        working-directory: ${{ matrix.service }}
+        run: mvn -B clean verify
+
+      - name: Verificar umbral minimo de cobertura JaCoCo (>= 80% instrucciones)
+        shell: python3 {0}
+        run: |
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          report = Path("${{ matrix.service }}/target/site/jacoco/jacoco.xml")
+          assert report.exists(), f"No se encontro el reporte JaCoCo en {report}"
+          root = ET.parse(report).getroot()
+          instr = next(c for c in root.findall("counter") if c.attrib["type"] == "INSTRUCTION")
+          covered = int(instr.attrib["covered"])
+          missed = int(instr.attrib["missed"])
+          pct = (covered / (covered + missed)) * 100.0
+          print(f"${{ matrix.service }} JaCoCo Instruction Coverage: {pct:.2f}% ({covered}/{covered + missed})")
+          assert pct >= 80.0, f"Cobertura {pct:.2f}% por debajo del umbral minimo obligatorio (80%)"
+
+      - name: Subir reportes Surefire y JaCoCo como artefactos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-jacoco-${{ matrix.service }}
+          path: |
+            ${{ matrix.service }}/target/surefire-reports/
+            ${{ matrix.service }}/target/site/jacoco/
+
+      - name: Analisis de Calidad y Cobertura en SonarCloud
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        working-directory: ${{ matrix.service }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORG: ${{ vars.SONAR_ORGANIZATION || 'cesargaray-dev' }}
+          SONAR_PROJECT_KEY: ${{ vars[matrix.sonar_key_var] || matrix.default_sonar_key }}
+        run: |
+          mvn -B sonar:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization="$SONAR_ORG" \
+            -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+            -Dsonar.projectName="${{ matrix.service }}" \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+      - name: Aviso si SONAR_TOKEN aun no esta configurado en GitHub Secrets
+        if: ${{ secrets.SONAR_TOKEN == '' }}
+        run: |
+          echo "::notice title=SonarCloud pendiente::Agrega el secreto SONAR_TOKEN en GitHub Settings -> Secrets -> Actions para publicar el analisis en SonarCloud."
+
+  # ============================================================================
+  # 2. Seguridad SAST en la nube (Semgrep)
+  # ============================================================================
+  security-sast-semgrep:
+    name: Escaneo SAST (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Ejecutar Semgrep SAST (excluyendo build, node_modules y videos)
+        run: |
+          mkdir -p reportes
+          semgrep scan \
+            --config=auto \
+            --exclude='target' \
+            --exclude='node_modules' \
+            --exclude='public' \
+            --exclude='videos' \
+            --exclude='build' \
+            --json \
+            --output=reportes/semgrep-cloud-report.json \
+            Ejercicio5Cliente Ejercicio5MyAPIGestor infra monitoring performance
+          python3 -c "
+          import json
+          data = json.load(open('reportes/semgrep-cloud-report.json'))
+          findings = data.get('results', [])
+          print(f'Total hallazgos Semgrep: {len(findings)}')
+          for f in findings:
+              print(f\" - {f['check_id']} en {f['path']}:{f['start']['line']}\")
+          "
+
+      - name: Archivar reporte Semgrep JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sast-report
+          path: reportes/semgrep-cloud-report.json
+
+  # ============================================================================
+  # 3. Verificacion de Dockerfiles e Infraestructura como Codigo (Terraform)
+  # ============================================================================
+  docker-and-terraform-iac:
+    name: Validar Dockerfiles y Terraform IaC
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Terraform CLI 1.9.8
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.8'
+
+      - name: Validar formato HCL y esquema Terraform (render-oss/render)
+        working-directory: infra/terraform
+        run: |
+          terraform fmt -check -diff *.tf
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Construir imagen Docker Backend (Ejercicio5MyAPIGestor)
+        run: docker build -t admin-proyectos/api-gestor:ci ./Ejercicio5MyAPIGestor
+
+      - name: Construir imagen Docker Frontend (Ejercicio5Cliente)
+        run: docker build -t admin-proyectos/cliente:ci ./Ejercicio5Cliente
+
+  # ============================================================================
+  # 4. Despliegue Continuo opcional a Render + Smoke Test k6 en la nube
+  # ============================================================================
+  deploy-and-smoke-render:
+    name: CD Render & k6 Cloud Verification
+    needs:
+      - build-test-sonarcloud
+      - security-sast-semgrep
+      - docker-and-terraform-iac
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ vars.RENDER_API_URL || 'https://admin-proyectos-api-gestor.onrender.com' }}
+      CLIENT_URL: ${{ vars.RENDER_CLIENT_URL || 'https://admin-proyectos-cliente.onrender.com' }}
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Disparar Deploy Hooks en Render (si estan configurados)
+        if: ${{ (github.event_name == 'push' || inputs.deploy_to_render == 'true') && secrets.RENDER_DEPLOY_HOOK_API != '' && secrets.RENDER_DEPLOY_HOOK_CLIENTE != '' }}
+        env:
+          HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          HOOK_CLIENTE: ${{ secrets.RENDER_DEPLOY_HOOK_CLIENTE }}
+        run: |
+          curl -fsSL -X POST "$HOOK_API"
+          curl -fsSL -X POST "$HOOK_CLIENTE"
+          echo "Deploy Hooks disparados; esperando 45s para arranque de contenedores..."
+          sleep 45
+
+      - name: Verificar /actuator/health en Render Cloud (con tolerancia a cold start)
+        run: |
+          echo "Despertando y verificando $API_URL/actuator/health"
+          curl -fsSL --retry 4 --retry-delay 15 --max-time 65 "$API_URL/actuator/health"
+          echo ""
+          echo "Despertando y verificando $CLIENT_URL/actuator/health"
+          curl -fsSL --retry 4 --retry-delay 15 --max-time 65 "$CLIENT_URL/actuator/health"
+          echo ""
+
+      - name: Instalar Grafana k6
+        run: |
+          K6_VER="v0.54.0"
+          curl -fsSL "https://github.com/grafana/k6/releases/download/${K6_VER}/k6-${K6_VER}-linux-amd64.tar.gz" -o /tmp/k6.tar.gz
+          tar -xzf /tmp/k6.tar.gz -C /tmp
+          sudo mv "/tmp/k6-${K6_VER}-linux-amd64/k6" /usr/local/bin/k6
+          k6 version
+
+      - name: Ejecutar k6 Smoke Test contra Render Cloud
+        run: |
+          mkdir -p performance/reports
+          k6 run \
+            -e API_URL="$API_URL" \
+            -e CLIENT_URL="$CLIENT_URL" \
+            -e TARGET_ENV=render \
+            -e REPORT_PREFIX=performance/reports/smoke-render-ci \
+            performance/k6/smoke-test.js
+
+      - name: Subir reporte k6 Smoke Cloud
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-smoke-render-report
+          path: performance/reports/smoke-render-ci.*

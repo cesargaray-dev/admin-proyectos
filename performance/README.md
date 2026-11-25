@@ -28,10 +28,13 @@ Suite reproducible de pruebas de humo (*smoke*) y carga controlada (*load*) con 
 
 ```powershell
 # Smoke test rápido (2 VUs, 20s)
-.\performance\run-k6.ps1 -Mode smoke
+powershell -ExecutionPolicy Bypass -File .\performance\run-k6.ps1 -Mode smoke
 
 # Carga controlada (rampa 5 -> 10 -> 20 -> 0 VUs, 75s)
-.\performance\run-k6.ps1 -Mode load
+powershell -ExecutionPolicy Bypass -File .\performance\run-k6.ps1 -Mode load
+
+# Escenario de oleadas variables (ramping-arrival-rate, 155s: Base -> Ola 1 -> Valle -> Pico -> Meseta -> Fin)
+powershell -ExecutionPolicy Bypass -File .\performance\run-k6.ps1 -Mode variable
 ```
 
 ### Despliegue en Vivo en Render Cloud (HTTPS)
@@ -43,9 +46,14 @@ Suite reproducible de pruebas de humo (*smoke*) y carga controlada (*load*) con 
   -ClientUrl https://<tu-cliente>.onrender.com
 
 # Carga controlada contra Render (escala automática 0.5x = máx. 10 VUs)
-.\performance\run-k6.ps1 -Mode load -Target render `
-  -ApiUrl https://<tu-api>.onrender.com `
-  -ClientUrl https://<tu-cliente>.onrender.com
+powershell -ExecutionPolicy Bypass -File .\performance\run-k6.ps1 -Mode load -Target render `
+  -ApiUrl https://admin-proyectos-api-gestor.onrender.com `
+  -ClientUrl https://admin-proyectos-cliente.onrender.com
+
+# Escenario de oleadas variables contra Render (ideal para validar variaciones en vivo en Grafana)
+powershell -ExecutionPolicy Bypass -File .\performance\run-k6.ps1 -Mode variable -Target render `
+  -ApiUrl https://admin-proyectos-api-gestor.onrender.com `
+  -ClientUrl https://admin-proyectos-cliente.onrender.com
 ```
 
 > También puedes definir `$env:RENDER_API_URL` y `$env:RENDER_CLIENT_URL` y ejecutar directamente `.\performance\run-k6.ps1 -Mode smoke -Target render`.
@@ -66,4 +74,4 @@ Suite reproducible de pruebas de humo (*smoke*) y carga controlada (*load*) con 
 Cada ejecución guarda automáticamente evidencia estructurada en `performance/reports/`:
 - `<prefijo>.json` — Salida completa de métricas k6 para auditoría y trazabilidad.
 - `<prefijo>.md` — Tabla resumen en Markdown lista para anexar al informe técnico.
-- `<prefijo>.html` — *(en `load-test.js`)* Reporte visual autónomo para abrir en el navegador durante la defensa.
+- `<prefijo>.html` — *(en `load-test.js` y `variable-load-test.js`)* Reporte visual autónomo para abrir en el navegador durante la defensa.
