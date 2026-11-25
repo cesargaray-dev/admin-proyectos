@@ -26,12 +26,11 @@ function scaleRate(baseRate) {
   return Math.max(1, Math.round(baseRate * VUS_SCALE));
 }
 
-// Tasas por etapa (iteraciones/seg; cada iteración ejecuta ~4–6 requests)
-const RATE_LOW = scaleRate(1);
-const RATE_WAVE_1 = scaleRate(5);
-const RATE_VALLEY = scaleRate(1);
-const RATE_WAVE_2_PEAK = scaleRate(8);
-const RATE_PLATEAU = scaleRate(3);
+const RATE_LOW = IS_RENDER ? 1 : scaleRate(1);
+const RATE_WAVE_1 = IS_RENDER ? 2 : scaleRate(5);
+const RATE_VALLEY = IS_RENDER ? 1 : scaleRate(1);
+const RATE_WAVE_2_PEAK = IS_RENDER ? 3 : scaleRate(8);
+const RATE_PLATEAU = IS_RENDER ? 2 : scaleRate(3);
 
 // Métricas personalizadas por servicio y capa
 const apiDuration = new Trend('api_response_time', true);
@@ -46,8 +45,8 @@ export const options = {
       executor: 'ramping-arrival-rate',
       startRate: RATE_LOW,
       timeUnit: '1s',
-      preAllocatedVUs: IS_RENDER ? 10 : 18,
-      maxVUs: IS_RENDER ? 25 : 40,
+      preAllocatedVUs: IS_RENDER ? 6 : 16,
+      maxVUs: IS_RENDER ? 12 : 30,
       stages: [
         { duration: '25s', target: RATE_LOW },          // 1. Línea base suave
         { duration: '30s', target: RATE_WAVE_1 },       // 2. Primera ola ascendente
@@ -87,6 +86,12 @@ function trackResult(res, passed, trendMetric) {
   if (!passed) {
     endpointErrors.add(1);
   }
+}
+
+export function setup() {
+  // Despierta suavemente ambos servicios antes de iniciar las oleadas
+  http.get(`${API_URL}/actuator/health`, { timeout: '65s' });
+  http.get(`${CLIENT_URL}/actuator/health`, { timeout: '65s' });
 }
 
 export default function () {
