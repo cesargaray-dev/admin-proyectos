@@ -35,13 +35,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: Ejercicio5MyAPIGestor
-            sonar_key_var: SONAR_PROJECT_KEY_APIGESTOR
-            default_sonar_key: cesargaray-dev_admin-proyectos-apigestor
-          - service: Ejercicio5Cliente
-            sonar_key_var: SONAR_PROJECT_KEY_CLIENTE
-            default_sonar_key: cesargaray-dev_admin-proyectos-cliente
+        service:
+          - Ejercicio5MyAPIGestor
+          - Ejercicio5Cliente
 
     steps:
       - name: Checkout repositorio (historial completo para SonarCloud)
@@ -87,25 +83,32 @@ jobs:
             ${{ matrix.service }}/target/site/jacoco/
 
       - name: Analisis de Calidad y Cobertura en SonarCloud
-        if: ${{ secrets.SONAR_TOKEN != '' }}
         working-directory: ${{ matrix.service }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORG: ${{ vars.SONAR_ORGANIZATION || 'cesargaray-dev' }}
-          SONAR_PROJECT_KEY: ${{ vars[matrix.sonar_key_var] || matrix.default_sonar_key }}
+          SONAR_ORG: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_KEY_API: ${{ vars.SONAR_PROJECT_KEY_APIGESTOR }}
+          SONAR_KEY_CLI: ${{ vars.SONAR_PROJECT_KEY_CLIENTE }}
         run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::notice title=SonarCloud pendiente::Agrega el secreto SONAR_TOKEN en GitHub Settings -> Secrets -> Actions para publicar el analisis en SonarCloud."
+            exit 0
+          fi
+
+          ORG="${SONAR_ORG:-cesargaray-dev}"
+          if [ "${{ matrix.service }}" = "Ejercicio5MyAPIGestor" ]; then
+            KEY="${SONAR_KEY_API:-cesargaray-dev_admin-proyectos-apigestor}"
+          else
+            KEY="${SONAR_KEY_CLI:-cesargaray-dev_admin-proyectos-cliente}"
+          fi
+
           mvn -B sonar:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.organization="$SONAR_ORG" \
-            -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+            -Dsonar.organization="$ORG" \
+            -Dsonar.projectKey="$KEY" \
             -Dsonar.projectName="${{ matrix.service }}" \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-
-      - name: Aviso si SONAR_TOKEN aun no esta configurado en GitHub Secrets
-        if: ${{ secrets.SONAR_TOKEN == '' }}
-        run: |
-          echo "::notice title=SonarCloud pendiente::Agrega el secreto SONAR_TOKEN en GitHub Settings -> Secrets -> Actions para publicar el analisis en SonarCloud."
 
   # ============================================================================
   # 2. Seguridad SAST en la nube (Semgrep)
@@ -113,33 +116,39 @@ jobs:
   security-sast-semgrep:
     name: Escaneo SAST (Semgrep)
     runs-on: ubuntu-latest
-    container:
-      image: semgrep/semgrep:latest
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
 
-      - name: Ejecutar Semgrep SAST (excluyendo build, node_modules y videos)
+      - name: Ejecutar Semgrep SAST en contenedor oficial
         run: |
           mkdir -p reportes
-          semgrep scan \
-            --config=auto \
-            --exclude='target' \
-            --exclude='node_modules' \
-            --exclude='public' \
-            --exclude='videos' \
-            --exclude='build' \
-            --json \
-            --output=reportes/semgrep-cloud-report.json \
-            Ejercicio5Cliente Ejercicio5MyAPIGestor infra monitoring performance
-          python3 -c "
+          docker run --rm \
+            -v "${{ github.workspace }}:/src" \
+            -w /src \
+            semgrep/semgrep:latest \
+            semgrep scan \
+              --config=auto \
+              --exclude='target' \
+              --exclude='node_modules' \
+              --exclude='public' \
+              --exclude='videos' \
+              --exclude='build' \
+              --json \
+              --output=/src/reportes/semgrep-cloud-report.json \
+              Ejercicio5Cliente Ejercicio5MyAPIGestor infra monitoring performance
+
+          python3 - <<'EOF'
           import json
-          data = json.load(open('reportes/semgrep-cloud-report.json'))
+          data = json.load(open('reportes/semgrep-cloud-report.json', encoding='utf-8'))
           findings = data.get('results', [])
-          print(f'Total hallazgos Semgrep: {len(findings)}')
+          errors = [f for f in findings if f.get('extra', {}).get('severity') == 'ERROR']
+          print(f"Total hallazgos Semgrep: {len(findings)} (ERROR criticos: {len(errors)})")
           for f in findings:
-              print(f\" - {f['check_id']} en {f['path']}:{f['start']['line']}\")
-          "
+              sev = f.get('extra', {}).get('severity', 'INFO')
+              print(f" - [{sev}] {f['check_id']} en {f['path']}:{f['start']['line']}")
+          assert len(errors) == 0, f"Se detectaron {len(errors)} hallazgos ERROR en Semgrep"
+          EOF
 
       - name: Archivar reporte Semgrep JSON
         if: always()
@@ -177,7 +186,7 @@ jobs:
         run: docker build -t admin-proyectos/cliente:ci ./Ejercicio5Cliente
 
   # ============================================================================
-  # 4. Despliegue Continuo opcional a Render + Smoke Test k6 en la nube
+  # 4. Despliegue Continuo a Render + Smoke Test k6 en la nube
   # ============================================================================
   deploy-and-smoke-render:
     name: CD Render & k6 Cloud Verification
@@ -195,15 +204,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Disparar Deploy Hooks en Render (si estan configurados)
-        if: ${{ (github.event_name == 'push' || inputs.deploy_to_render == 'true') && secrets.RENDER_DEPLOY_HOOK_API != '' && secrets.RENDER_DEPLOY_HOOK_CLIENTE != '' }}
         env:
           HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
           HOOK_CLIENTE: ${{ secrets.RENDER_DEPLOY_HOOK_CLIENTE }}
+          SHOULD_DEPLOY: ${{ github.event_name == 'push' || inputs.deploy_to_render == 'true' }}
         run: |
-          curl -fsSL -X POST "$HOOK_API"
-          curl -fsSL -X POST "$HOOK_CLIENTE"
-          echo "Deploy Hooks disparados; esperando 45s para arranque de contenedores..."
-          sleep 45
+          if [ "$SHOULD_DEPLOY" = "true" ] && [ -n "$HOOK_API" ] && [ -n "$HOOK_CLIENTE" ]; then
+            curl -fsSL -X POST "$HOOK_API"
+            curl -fsSL -X POST "$HOOK_CLIENTE"
+            echo "Deploy Hooks disparados; esperando 45s para arranque de contenedores..."
+            sleep 45
+          else
+            echo "::notice title=Deploy Hook omitido::Define RENDER_DEPLOY_HOOK_API y RENDER_DEPLOY_HOOK_CLIENTE en GitHub Secrets para disparar redeploys explicitos desde Actions."
+          fi
 
       - name: Verificar /actuator/health en Render Cloud (con tolerancia a cold start)
         run: |
